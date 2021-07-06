@@ -107,6 +107,9 @@ type Logger struct {
 	// using gzip. The default is not to perform compression.
 	Compress bool `json:"compress" yaml:"compress"`
 
+	//记录上次写入的时间
+	lastWriteTime int64
+
 	size int64
 	file *os.File
 	mu   sync.Mutex
@@ -148,6 +151,20 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 			return 0, err
 		}
 	}
+
+	//判断是否是第二天
+	now := time.Now()
+	_, zone := now.Zone()
+	nowTime := now.Unix() - int64(zone)
+	if l.lastWriteTime > 0 {
+		yesterday := (l.lastWriteTime) / 86400
+		if yesterday != (nowTime / 86400) {
+			if err := l.rotate(); err != nil {
+				return 0, err
+			}
+		}
+	}
+	l.lastWriteTime = nowTime
 
 	if l.size+writeLen > l.max() {
 		if err := l.rotate(); err != nil {
@@ -320,9 +337,10 @@ func (l *Logger) millRunOnce() error {
 			// Only count the uncompressed log file or the
 			// compressed log file, not both.
 			fn := f.Name()
-			if strings.HasSuffix(fn, compressSuffix) {
-				fn = fn[:len(fn)-len(compressSuffix)]
-			}
+			fn = strings.TrimSuffix(fn, compressSuffix)
+			// if strings.HasSuffix(fn, compressSuffix) {
+			// 	fn = fn[:len(fn)-len(compressSuffix)]
+			// }
 			preserved[fn] = true
 
 			if len(preserved) > l.MaxBackups {
