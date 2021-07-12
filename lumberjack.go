@@ -155,7 +155,7 @@ func (l *Logger) Write(p []byte) (n int, err error) {
 	//判断是否是第二天
 	now := time.Now()
 	_, zone := now.Zone()
-	nowTime := now.Unix() - int64(zone)
+	nowTime := now.Unix() + int64(zone)
 	if l.lastWriteTime > 0 {
 		yesterday := (l.lastWriteTime) / 86400
 		if yesterday != (nowTime / 86400) {
